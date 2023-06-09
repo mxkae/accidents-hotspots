@@ -4,7 +4,7 @@
     <title>Machine Learning Project</title>
     <style>
         #map {
-            height: 500px;
+            height: 100%;
             width: 100%;
         }
     </style>
@@ -18,18 +18,94 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
     <script src="/static/main.js"></script>
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
-<body>
-    <h1>Machine Learning Project</h1>
+<body class="bg-gray-900">
+    <div class="bg-white p-12 flex flex-col align-middle">
+        <h1 class="text-[56px] font-bold text-gray-500">Accident Hotspots</h1>
+        <h2 class="text-lg">Predicting High-Incident Locations using Clustering and Regression Models</h2>
+    </div>
+    <div class="px-16 py-8 mb-8 flex justify-between">
+        <div class="flex flex-grow">
+            <div class="flex mr-8 flex-col w-40">
+                <label for="month" class="flex font-bold text-xl mb-2 text-gray-200">Month</label>
+                <div class="flex">
+                    <div class="flex justify-center relative border-2 rounded-md border-gray-400 pl-4 pr-3 py-1 items-center w-full">
+                        <select name="month" id="month" class="w-full border-none appearance-none bg-gray-900 text-gray-400 focus:outline-none">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                        <svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 512 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><style>svg{fill:#9ca3af}</style><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>
+                    </div>
+                </div>
+            </div>
+            <div class="flex mr-8 flex-col w-40">
+                <label for="year" class="flex font-bold text-xl mb-2 text-gray-200">Year</label>
+                <div class="flex">
+                    <div class="flex justify-center relative border-2 rounded-md border-gray-400 pl-4 pr-3 py-1 items-center w-full">
+                        <select name="year" id="year" class="w-full border-none appearance-none bg-gray-900 text-gray-400 focus:outline-none">
+                            <option value="2015">2015</option>
+                            <option value="2016">2016</option>
+                            <option value="2017">2017</option>
+                            <option value="2018">2018</option>
+                            <option value="2019">2019</option>
+                            <option value="2020">2020</option>
+                            <option value="2021">2021</option>
+                            <option value="2022">2022</option>
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                            <option value="2026">2026</option>
+                            <option value="2027">2027</option>
+                            <option value="2028">2028</option>
+                            <option value="2029">2029</option>
+                            <option value="2030">2030</option>
+                        </select>
+                        <svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 512 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><style>svg{fill:#9ca3af}</style><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <label for="clusters" class="flex font-bold text-xl mb-2 text-gray-200">No. of Clusters</label>
 
-    <h2>Monthly Prediction</h2>
-    <form>
-        <label for="monthInput">Enter a month (1-12):</label>
-        <input type="number" id="monthInput" min="1" max="12">
-        <button type="submit">Predict</button>
-    </form>
-    <ul id="predictions"></ul>
+            <div class="w-80">
+                <input type="range" min="1" max="10" class="w-full bg-transparent" step="1" name="clusters" id="clusters" value="4" />
+                <div class="w-full flex justify-between text-xs text-white pl-[8px]">
+                    <span>1</span>
+                    <span>2</span>
+                    <span>3</span>
+                    <span>4</span>
+                    <span>5</span>
+                    <span>6</span>
+                    <span>7</span>
+                    <span>8</span>
+                    <span>9</span>
+                    <span>10</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="px-16 mb-24 relative h-[600px]">
+        <div id="note" class="mb-2 text-gray-400">Click on the markers to check the predictions</div>
+        <div id="map"></div>
 
-    <div id="map"></div>
+        <div id="loading-spinner">
+            <div id="loading-spinner-inner" class="h-full flex justify-center items-center w-full">
+                <svg class='animate-spin' xmlns="http://www.w3.org/2000/svg" height="4rem" viewBox="0 0 512 512">! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc.<style>svg{fill:#00a9b2}</style><path d="M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z"/></svg>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

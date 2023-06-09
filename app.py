@@ -6,13 +6,43 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-import folium
-from folium.plugins import MarkerCluster
 
 app = Flask(__name__, static_folder='static')
 
+DEFAULT_CLUSTERS = 4
+COLORS =[
+    '#2f4f4f', 
+    '#2e8b57', 
+    '#8b0000', 
+    '#808000', 
+    '#00008b', 
+    '#ff0000',
+    '#ff8c00',
+    '#7fff00',
+    '#4169e1',
+    '#00ffff',
+    '#00bfff',
+    '#0000ff',
+    '#f08080',
+    '#da70d6',
+    '#d8bfd8',
+    '#ff00ff',
+    '#eee8aa',
+    '#ffff54',
+    '#ff1493',
+    '#98fb98'
+    ]
+
+
 # Read the file path from Kaggle and return a DataFrame of recorded road accidents in Metro Manila from 2018-2020
 data = pd.read_csv("data_mmda_traffic_spatial.csv")
+# Subset of columns that will be used for clustering
+
+kmeans_models = {}
+kmeans_clusters = {}
+kmeans_cluster_centers = {}
+
+## PREPROCESS 
 
 # Drop rows with NaN, 0.0, irrelevant, and duplicate values
 data.dropna(subset=["Date", "Time", "Longitude", "Latitude"], inplace=True)
@@ -51,178 +81,110 @@ data["Time"] = data["Hour"].map("{:02d}".format) + ":" + data["Minute"].map("{:0
 # Combines the Date and Time to datetime format and maps to their corresponding ordinal representation
 data["Datetime"] = pd.to_datetime(data["Date"] + " " + data["Time"])
 data["month"] = data["Datetime"].dt.month
+data["year"] = data["Datetime"].dt.year
 
-# Subset of columns that will be used for clustering
 features = data[["Latitude", "Longitude"]]
 lat_lng = features.values
 
-# This can be changed!
-n_clusters=4
-
-# Perform K-means with the optimal number of clusters
-kmeans = KMeans(n_clusters, random_state=0)
-
-# Assign and label each data record to a cluster
-cluster_labels = kmeans.fit_predict(features)
-data["cluster"] = cluster_labels
+for K in range(1, 11):
+    kmeans = KMeans(n_clusters=K, random_state=0, n_init=10)
+    clusters = kmeans.fit_predict(features)
+    kmeans_models[K] = kmeans
+    kmeans_clusters[K] = clusters
+    kmeans_cluster_centers[K] = kmeans.cluster_centers_
 
 
-# Get the cluster centers
-cluster_centers = kmeans.cluster_centers_
+def perform_regression(_data, k):
+    # Group the data by cluster and month, and count the number of accidents
+    grouped_data = _data.groupby(["cluster", "month", "year"]).size().reset_index(name='accidents')
 
-# Convert the "Datetime" column to datetime type
-data["Datetime"] = pd.to_datetime(data["Datetime"])
+    cluster_datasets = {}
+    for cluster_id in range(k): 
+        # Finalize current cluster's data for the Month and Accident Count column
+        cluster_data = grouped_data[grouped_data["cluster"] == cluster_id]
+        cluster_data = cluster_data[['cluster', 'month', 'year', 'accidents']]
+        cluster_datasets[cluster_id] = cluster_data
 
-# Create a Folium map centered on the mean of the cluster centers
-colors =[
-    '#2f4f4f', 
-    '#2e8b57', 
-    '#8b0000', 
-    '#808000', 
-    '#00008b', 
-    '#ff0000',
-    '#ff8c00',
-    '#7fff00',
-    '#4169e1',
-    '#00ffff',
-    '#00bfff',
-    '#0000ff',
-    '#f08080',
-    '#da70d6',
-    '#d8bfd8',
-    '#ff00ff',
-    '#eee8aa',
-    '#ffff54',
-    '#ff1493',
-    '#98fb98'
-    ]
+    # Store regression models based on random_state of train_test_split
+    regression_models = {}
+    average_r2 = []
+    for R in range(0,51):
+        r2_sum = 0
+        # Create regression models for each cluster
+        models = {}
+        for cluster_id in range(k):
+            cluster_dataset = cluster_datasets[cluster_id]
+            X_cluster = cluster_dataset[['month', 'year']]
+            y_cluster = cluster_dataset['accidents']
+            
+            X_train, X_test, y_train, y_test = train_test_split( X_cluster, y_cluster, test_size=0.3, random_state=R)
+            
+            # Create and train the Random Forest Regression model
+            model = RandomForestRegressor(random_state=0)
+            model.fit(X_train, y_train)
+            
+            # Make predictions
+            y_pred = model.predict(X_test)
+
+            # Evaluate the model
+            mse = mean_squared_error(y_test, y_pred)
+            mae = mean_absolute_error(y_test, y_pred)
+            rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+            r2 = r2_score(y_test, y_pred)
+            r2_sum = r2_sum + r2
+            
+            models[cluster_id] = model
+        ave = r2_sum / k
+        average_r2.append(ave)
+        regression_models[R] = models
+
+    model_index = average_r2.index(max(average_r2))
+    return regression_models[model_index]    
 
 
-map_center = cluster_centers.mean(axis=0)
-metro_coords = (14.599574, 121.059929)
-m = folium.Map(
-    location=map_center,
-    zoom_start=11,
-    tiles='OpenStreetMap'
-)
+@app.route('/static/css/main.css')
+def serve_css():
+    return app.send_static_file('css/styles.css')
 
-# Create a MarkerCluster layer for the clusters
-marker_cluster = MarkerCluster()
 
-# Add markers to the map based on the cluster centers
-for center in cluster_centers:
-    folium.Marker(location=center).add_to(m)
-
-for point, label in zip(lat_lng, cluster_labels):
-    folium.CircleMarker(location=point, color=f'{colors[label]}', fill=True, radius=3).add_to(m)
-    
-# Display the map
-m
-
-# Group the data by cluster and month, and count the number of accidents
-grouped_data = data.groupby(["cluster", "month"]).size().reset_index(name='accidents')
-
-# Create a new DataFrame to store the accident counts for each cluster and month
-cluster_datasets = {}
-for cluster_id in range(n_clusters): 
-    # Finalize current cluster's data for the Month and Accident Count column
-    cluster_data = grouped_data[grouped_data["cluster"] == cluster_id]
-    cluster_data = cluster_data[['cluster','month', 'accidents']]
-    cluster_datasets[cluster_id] = cluster_data
-
-# Create regression models for each cluster
-models = {}
-for cluster_id in range(n_clusters):
-    cluster_dataset = cluster_datasets[cluster_id]
-    X_cluster = cluster_dataset[['month']]
-    y_cluster = cluster_dataset['accidents']
-    
-    X_train, X_test, y_train, y_test = train_test_split( X_cluster, y_cluster, test_size=0.3, random_state=2)
-    
-    # Create and train the Random Forest Regression model
-    model = RandomForestRegressor(random_state=0)
-    model.fit(X_train, y_train)
-    
-    # Make predictions
-    y_pred = model.predict(X_test)
-
-    # Evaluate the model
-    mse = mean_squared_error(y_test, y_pred)
-    mae = mean_absolute_error(y_test, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-    r2 = r2_score(y_test, y_pred)
-        
-    print(f"Cluster {cluster_id}:")
-    print(f"MSE: {mse:.2f}")
-    print(f"MAE: {mae:.2f}")
-    print(f"RMSE: {rmse:.2f}")
-    print(f"R^2: {r2}")
-    print()
-    
-    models[cluster_id] = model
-    
 @app.route('/')
 def home():
-    return render_template('index.html', map_center=map_center, cluster_centers=cluster_centers, lat_lng=lat_lng, cluster_labels=cluster_labels)
+    return render_template('index.html')
 
 
-@app.route('/predict/<int:month>', methods=['GET'])
-def predict_1(month):
-    input_data_1 = pd.DataFrame({
+@app.route('/predict/<int:nclusters>/<int:month>/<int:year>', methods=['GET'])
+def predict(nclusters, month, year):
+    global data, kmeans_clusters, kmeans_cluster_centers, lat_lng
+    input_data = pd.DataFrame({
     'month': [month],
+    'year': [year]
     })
 
-    # Initialize variables
-    highest_cluster = None
-    highest_accidents = 0
+    _data = data.copy()
+    cluster_labels = kmeans_clusters[nclusters]
+    cluster_centers = kmeans_cluster_centers[nclusters]
+    _data['cluster'] = cluster_labels
+
+    r_models = perform_regression(_data, nclusters)
+
     predictions = []
 
-    # Iterate through all clusters and their regression models
-    for cluster_id in range(n_clusters):
-        model = models[cluster_id]
-        # Predict the number of accidents for that month
-        
-        prediction = model.predict(input_data_1)
-        print(f"Cluster {cluster_id} - Predicted Accidents for {month} : {prediction[0]:.2f}")
+    for cluster_id in range(nclusters):
+        model = r_models[cluster_id]
 
+        prediction = model.predict(input_data)
+        print(f"Cluster {cluster_id} - Predicted Accidents for {month} {year} : {prediction[0]:.2f}")
         predictions.append(prediction[0])
-        # Take note of the highest accident count
-        if prediction[0] > highest_accidents:
-            highest_cluster = cluster_id
-            highest_accidents = prediction[0]
-
-    # Print the predicted highest accident count cluster
-    print(f"\nCluster {highest_cluster} has the highest number of accidents with {int(highest_accidents)} predicted accidents for {month}.")
-    #cluster_data = data[data['cluster'] == highest_cluster]
-    #print(cluster_data)
-    # Prepare the response
+    
     response = {
         'predictions': predictions,
         'cluster_centers': cluster_centers.tolist(),
         'cluster_labels': cluster_labels.tolist(),
-        'colors': colors,
+        'colors': COLORS,
         'lat_lngs': lat_lng.tolist()
     }
 
     return jsonify(response)
-
-@app.route('/predict/<float:latitude>/<float:longitude>/<int:month>', methods=['GET'])
-def predict_2(latitude, longitude, month):
-    # Create a DataFrame with named columns
-    input_data_2 = pd.DataFrame({
-        'Latitude': [latitude],
-        'Longitude': [longitude],
-        'month': [month],
-    })
-
-    cluster = kmeans.predict(input_data_2[['Latitude', 'Longitude']])[0]
-    model = models[cluster]
-
-    prediction = model.predict(input_data_2[['month']])[0]
-
-    print(f"Cluster is {cluster}. Predicted Accidents for {month}: {prediction:.2f}")
-
-    return jsonify({'prediction': prediction[0]})
 
 # Run the Flask application
 if __name__ == '__main__':
