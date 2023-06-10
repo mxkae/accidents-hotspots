@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "watch:css": "npx tailwindcss -i ./api/styles.css -o ./api/static/css/styles.css --watch"
+    "watch:css": "npx tailwindcss -i ./styles.css -o ./static/css/styles.css --watch"
   },
   "devDependencies": {
     "daisyui": "^3.0.22",

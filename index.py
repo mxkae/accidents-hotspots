@@ -35,7 +35,7 @@ COLORS =[
 
 
 # Read the file path from Kaggle and return a DataFrame of recorded road accidents in Metro Manila from 2018-2020
-data = pd.read_csv("../data_mmda_traffic_spatial.csv")
+data = pd.read_csv("data_mmda_traffic_spatial.csv")
 # Subset of columns that will be used for clustering
 
 kmeans_models = {}
