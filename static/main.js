@@ -10,31 +10,26 @@ $(document).ready(function () {
   var markerClusters = L.markerClusterGroup();
 
   const select_month = $('#month');
-  const select_year = $('#year');
   const input_cluster = $('#clusters');
   const loadingSpinner = $('#loading-spinner');
   const map_div = $('#map');
   const note = $('#note')
 
-  
-
   select_month.on('change', getMarkers);
-  select_year.on('change', getMarkers);
   input_cluster.on('change', getMarkers);
 
   function getMarkers() {
     const clusters = input_cluster.val();
     const month = select_month.val();
-    const year = select_year.val();
 
-    if (clusters && month && year) {
+    if (clusters && month) {
 
       map_div.hide();
       note.hide();
       loadingSpinner.show();
 
       $.ajax({
-        url: "/predict/" + clusters + "/" + month + "/" + year,
+        url: "/predict/" + clusters + "/" + month,
         type: "GET",
         success: function (response) {
           const predictions = response.predictions;
@@ -42,18 +37,6 @@ $(document).ready(function () {
           const clusterLabels = response.cluster_labels;
           const colors = response.colors;
           const latLngs = response.lat_lngs;
-
-          // Display the predictions on the page
-          // $("#predictions").empty();
-          // for (var i = 0; i < predictions.length; i++) {
-          //   $("#predictions").append(
-          //     "<li>Predicted accidents for Cluster " +
-          //       i +
-          //       ": " +
-          //       predictions[i] +
-          //       "</li>"
-          //   );
-          // }
 
           // Clear previous markers
           markerClusters.clearLayers();
@@ -91,4 +74,5 @@ $(document).ready(function () {
       
     }
   }
+  getMarkers()
 });

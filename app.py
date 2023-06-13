@@ -42,8 +42,8 @@ def serve_css():
 def home():
     return render_template('index.html')
 
-@app.route('/predict/<int:nclusters>/<int:month>/<int:year>', methods=['GET'])
-def predict(nclusters, month, year):
+@app.route('/predict/<int:nclusters>/<int:month>', methods=['GET'])
+def predict(nclusters, month):
     global KMEANS_CLUSTERS, KMEANS_CLUSTERS_CENTERS, FEATURES, REGRESSION_MODELS, COLORS
     
     cluster_labels = KMEANS_CLUSTERS[nclusters]
@@ -61,7 +61,7 @@ def predict(nclusters, month, year):
 
         prediction = model.predict(input_data)
         print(
-            f"Cluster {cluster_id} - Predicted Accidents for {month} {year} : {prediction[0]:.2f}")
+            f"Cluster {cluster_id} - Predicted Accidents for {month} : {prediction[0]:.2f}")
         predictions.append(prediction[0])
 
     response = {
