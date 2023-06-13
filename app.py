@@ -50,8 +50,7 @@ def predict(nclusters, month, year):
     cluster_centers = KMEANS_CLUSTERS_CENTERS[nclusters]
 
     input_data = pd.DataFrame({
-            'month': [month],
-            'year': [year]
+            'month': [month]
         })
     r_models = REGRESSION_MODELS[nclusters]
 
