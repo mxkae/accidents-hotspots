@@ -43,7 +43,7 @@ def get_data():
 def train_kmeans_models(features):
     for K in range(1, 11):
         print('Training KMeans Models for ', K, ' clusters')
-        kmeans = KMeans(n_clusters=K, random_state=0, n_init=10)
+        kmeans = KMeans(n_clusters=K, random_state=0)
         clusters = kmeans.fit_predict(features)
         kmeans_models[K] = kmeans
         kmeans_clusters[K] = clusters
@@ -52,13 +52,13 @@ def train_kmeans_models(features):
 def train_regression_models(_data, k):
     # Group the data by cluster and month, and count the number of accidents
     grouped_data = _data.groupby(
-        ["cluster", "month", "year"]).size().reset_index(name='accidents')
+        ["cluster", "month"]).size().reset_index(name='accidents')
 
     cluster_datasets = {}
     for cluster_id in range(k):
         # Finalize current cluster's data for the Month and Accident Count column
         cluster_data = grouped_data[grouped_data["cluster"] == cluster_id]
-        cluster_data = cluster_data[['cluster', 'month', 'year', 'accidents']]
+        cluster_data = cluster_data[['cluster', 'month', 'accidents']]
         cluster_datasets[cluster_id] = cluster_data
 
     # Store regression models based on random_state of train_test_split
@@ -71,7 +71,7 @@ def train_regression_models(_data, k):
         print('     Testing with random state ', R)
         for cluster_id in range(k):
             cluster_dataset = cluster_datasets[cluster_id]
-            X_cluster = cluster_dataset[['month', 'year']]
+            X_cluster = cluster_dataset[['month']]
             y_cluster = cluster_dataset['accidents']
 
             X_train, X_test, y_train, y_test = train_test_split(
